@@ -38,36 +38,48 @@
  * by the user before to call AlFreeList().
  *
  * On error, NULL is returned. Otherwise the pointer to the new list. */
+/**
+ * 创建一个新链表，被创建的链表可以使用 AlFreeList() 函数进行释放，
+ * 但是在调用 AlFreeList() 函数前，用户需要自己释放每个结点的私有值
+ * 
+ * 出错时，返回NULL， 否则返回指向新链表的指针
+ **/
 list *listCreate(void)
 {
-    struct list *list;
+    struct list *list;  // 定义指向链表类型的指针
 
-    if ((list = zmalloc(sizeof(*list))) == NULL)
+    if ((list = zmalloc(sizeof(*list))) == NULL)    // 为链表分配空间， zmalloc() 函数是作者对 malloc() 函数的封装，
+                                                    // 包含了对 malloc() 函数的出错处理
         return NULL;
-    list->head = list->tail = NULL;
-    list->len = 0;
-    list->dup = NULL;
-    list->free = NULL;
-    list->match = NULL;
-    return list;
+    list->head = list->tail = NULL; // 将指向链表首结点和尾结点的指针初始化为空
+    list->len = 0;  // 将链表长度初始化为 0
+    list->dup = NULL;   // 将链表复制函数指针初始化为 NULL
+    list->free = NULL;  // 将链表释放函数指针初始化为 NULL
+    list->match = NULL; // 将链表比较函数指针初始化为 NULL
+    return list;   // 返回指向新创建的链表的指针
 }
 
 /* Remove all the elements from the list without destroying the list itself. */
+/**
+ * 清除链表的所有元素，但不销毁链表本身
+ **/
 void listEmpty(list *list)
 {
-    unsigned long len;
-    listNode *current, *next;
+    unsigned long len;  // 存储链表的长度
+    listNode *current, *next;   // 链表的当前结点指针和后继结点指针
 
-    current = list->head;
+    current = list->head;   // 将指向当前结点的指针设置为链表的第一个结点
     len = list->len;
     while(len--) {
-        next = current->next;
-        if (list->free) list->free(current->value);
-        zfree(current);
-        current = next;
+        next = current->next;   // 设置后继结点指针的值
+        if (list->free) list->free(current->value); // 如果链表有释放函数，则调用之，释放该结点的值
+                                                    // 用户在链表中存储的值需要单独释放，如结点中的值涉及动态分配内存空间，
+                                                    // 就需要定义释放该结点的函数，否则会造成内存泄露
+        zfree(current); // 释放该结点
+        current = next; // 指针后移
     }
-    list->head = list->tail = NULL;
-    list->len = 0;
+    list->head = list->tail = NULL; // 将指向首结点和尾结点的指针重置为NULL
+    list->len = 0;  // 重置链表长度
 }
 
 /* Free the whole list.

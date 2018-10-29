@@ -33,8 +33,8 @@
 #ifndef __SDS_H
 #define __SDS_H
 
-#define SDS_MAX_PREALLOC (1024*1024)
-const char *SDS_NOINIT;
+#define SDS_MAX_PREALLOC (1024*1024)    // 预分配　１Ｍ大小内存空间
+const char *SDS_NOINIT; // 标志字符串不需要初始化
 
 #include <sys/types.h>
 #include <stdarg.h>
@@ -73,15 +73,15 @@ struct __attribute__ ((__packed__)) sdshdr64 {
     char buf[];
 };
 
-#define SDS_TYPE_5  0
+#define SDS_TYPE_5  0   // 不同长度的SDS的标志
 #define SDS_TYPE_8  1
 #define SDS_TYPE_16 2
 #define SDS_TYPE_32 3
 #define SDS_TYPE_64 4
 #define SDS_TYPE_MASK 7
 #define SDS_TYPE_BITS 3
-#define SDS_HDR_VAR(T,s) struct sdshdr##T *sh = (void*)((s)-(sizeof(struct sdshdr##T)));
-#define SDS_HDR(T,s) ((struct sdshdr##T *)((s)-(sizeof(struct sdshdr##T))))
+#define SDS_HDR_VAR(T,s) struct sdshdr##T *sh = (void*)((s)-(sizeof(struct sdshdr##T)));     //　SDS　结构体的值
+#define SDS_HDR(T,s) ((struct sdshdr##T *)((s)-(sizeof(struct sdshdr##T)))) // SDS 结构体指针(指向结构体首地址)
 #define SDS_TYPE_5_LEN(f) ((f)>>SDS_TYPE_BITS)
 
 static inline size_t sdslen(const sds s) {

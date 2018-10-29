@@ -41,31 +41,31 @@
 
 const char *SDS_NOINIT = "SDS_NOINIT";
 
-static inline int sdsHdrSize(char type) {   // 判断字符串类型(根据字符串的长度)
-    switch(type&SDS_TYPE_MASK) {    // 第三位标志字符串类型，与7(00000111)按位与，判断字符串类型
-        case SDS_TYPE_5:    // 长度小于2^5
+static inline int sdsHdrSize(char type) {
+    switch(type&SDS_TYPE_MASK) {
+        case SDS_TYPE_5:
             return sizeof(struct sdshdr5);
-        case SDS_TYPE_8:    // 长度大于等于2^5小于2^8
+        case SDS_TYPE_8:
             return sizeof(struct sdshdr8);
-        case SDS_TYPE_16:   // 长度大于等于2^8小于2^16
+        case SDS_TYPE_16:
             return sizeof(struct sdshdr16);
-        case SDS_TYPE_32:   // 长度大于等于2^16小于2^32
+        case SDS_TYPE_32:
             return sizeof(struct sdshdr32);
-        case SDS_TYPE_64:   // 长度大于等于2^32小于2^64
+        case SDS_TYPE_64:
             return sizeof(struct sdshdr64);
     }
     return 0;
 }
 
-static inline char sdsReqType(size_t string_size) { // 判断字符串的长度
-    if (string_size < 1<<5) // 长度小于32
+static inline char sdsReqType(size_t string_size) {
+    if (string_size < 1<<5)
         return SDS_TYPE_5;
-    if (string_size < 1<<8) // 长度大于等于32且小于256
+    if (string_size < 1<<8)
         return SDS_TYPE_8;
-    if (string_size < 1<<16)    // 长度大于等于256且小于65536
+    if (string_size < 1<<16)
         return SDS_TYPE_16;
-#if (LONG_MAX == LLONG_MAX) // 支持long long
-    if (string_size < 1ll<<32)  // 长度大于等于65536且小于2147483648
+#if (LONG_MAX == LLONG_MAX)
+    if (string_size < 1ll<<32)
         return SDS_TYPE_32;
     return SDS_TYPE_64;
 #else
@@ -86,33 +86,14 @@ static inline char sdsReqType(size_t string_size) { // 判断字符串的长度
  * You can print the string with printf() as there is an implicit \0 at the
  * end of the string. However the string is binary safe and can contain
  * \0 characters in the middle, as the length is stored in the sds header. */
-
-/**
- * 创建一个新的 SDS 字符串，这个字符串的内容是由 init 指针
- * 和 initlen 初始化的
- * 如果 init 是空指针，那么字符串将被初始化为0字节
- * 如果 SDS_NOINIT 被使用，字符串是不会初始化的
- * 这个字符串会总是以空结尾的(所有的 sds 字符串总是这样)，
- * 因此，如果你创建了一个 sds 字符串使用一下方式:
- * 
- * mysring = sdsnewlen("abc", 3);
- * 
- * 你可以使用 printf() 函数打印字符串，因为字符串的结尾是隐含一个字符串 0 的。
- * 并且，这个字符串也是二进制安全的，中间可以包含字符0，
- * 因为 sds 头部是有储存字符串的长度的。
- **/
-sds sdsnewlen(const void *init, size_t initlen) {   //　创建一个SDS　字符串，并初始化
+sds sdsnewlen(const void *init, size_t initlen) {
     void *sh;
     sds s;
-    char type = sdsReqType(initlen);    // 判断字符串类型
+    char type = sdsReqType(initlen);
     /* Empty strings are usually created in order to append. Use type 8
      * since type 5 is not good at this. */
-    /**
-     * 为了可以在后面添加字符串，空字符串是经常被创建的。
-     * 如果类型是5，应使用类型8，因为类型5是不擅长这些的
-     **/
-    if (type == SDS_TYPE_5 && initlen == 0) type = SDS_TYPE_8; // 长度小于32的字符串都使用类型8来存储
-    int hdrlen = sdsHdrSize(type);  // 获取所使用的类型的头的长度
+    if (type == SDS_TYPE_5 && initlen == 0) type = SDS_TYPE_8;
+    int hdrlen = sdsHdrSize(type);
     unsigned char *fp; /* flags pointer. */
 
     sh = s_malloc(hdrlen+initlen+1);

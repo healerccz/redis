@@ -36,7 +36,12 @@
  * the include of your alternate allocator if needed (not needed in order
  * to use the default libc allocator). */
 
+/**
+ * SDS 分配器的选择
+ * 这个文件是用来改变 SDS 在编译时的分配器。
+ * 只需定义以下定义即可，如果需要，你可以添加自己的分配器
+ **/
 #include "zmalloc.h"
-#define s_malloc zmalloc
+#define s_malloc zmalloc    // 增加代码的可读性
 #define s_realloc zrealloc
 #define s_free zfree

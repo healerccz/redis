@@ -260,29 +260,34 @@ sds sdsMakeRoomFor(sds s, size_t addlen) {
     void *sh, *newsh;
     size_t avail = sdsavail(s);
     size_t len, newlen;
-    char type, oldtype = s[-1] & SDS_TYPE_MASK;
+    char type, oldtype = s[-1] & SDS_TYPE_MASK; // 旧字符串 flags 标志
     int hdrlen;
 
     /* Return ASAP if there is enough space left. */
+    // 有足够的空间
     if (avail >= addlen) return s;
+    // 没有足够的空间
+    len = sdslen(s);    // 旧字符串的长度
+    sh = (char*)s-sdsHdrSize(oldtype);  // 指向旧字符串 sds 类型结构体的首地址
+    newlen = (len+addlen);  // 新长度
+    if (newlen < SDS_MAX_PREALLOC)  // 小于 1Ｍ
+        newlen *= 2;    //　分配两倍大小
+    else    //　大于　１Ｍ
+        newlen += SDS_MAX_PREALLOC; //　多分配　１Ｍ
 
-    len = sdslen(s);
-    sh = (char*)s-sdsHdrSize(oldtype);
-    newlen = (len+addlen);
-    if (newlen < SDS_MAX_PREALLOC)
-        newlen *= 2;
-    else
-        newlen += SDS_MAX_PREALLOC;
-
-    type = sdsReqType(newlen);
+    type = sdsReqType(newlen);  //　获取新字符串的类型(该字符串只是分配的长度变了)
 
     /* Don't use type 5: the user is appending to the string and type 5 is
      * not able to remember empty space, so sdsMakeRoomFor() must be called
      * at every appending operation. */
-    if (type == SDS_TYPE_5) type = SDS_TYPE_8;
+    /**
+     * 用户在添加字符串的时候不要使用类型５，因为类型５是不能记录空闲空间的，
+     * sdsMakeRoomFor() 函数在每次向字符串后执行添加操作时都会被调用
+     **/
+    if (type == SDS_TYPE_5) type = SDS_TYPE_8;  // 如果是类型５，　将类型提升至类型８
 
-    hdrlen = sdsHdrSize(type);
-    if (oldtype==type) {
+    hdrlen = sdsHdrSize(type);  //　获取　sds 结构体长度
+    if (oldtype==type) {    //　类型没有变化，
         newsh = s_realloc(sh, hdrlen+newlen+1);
         if (newsh == NULL) return NULL;
         s = (char*)newsh+hdrlen;

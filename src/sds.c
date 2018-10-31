@@ -41,8 +41,8 @@
 
 const char *SDS_NOINIT = "SDS_NOINIT";
 
-static inline int sdsHdrSize(char type) {   // 判断字符串类型(根据字符串的长度)
-    switch(type&SDS_TYPE_MASK) {    // 第三位标志字符串类型，与7(00000111)按位与，判断字符串类型
+static inline int sdsHdrSize(char type) {   // 字符串头大小
+    switch(type&SDS_TYPE_MASK) {    // 低三位标志字符串类型，与7(00000111)按位与，判断字符串类型
         case SDS_TYPE_5:    // 长度小于2^5
             return sizeof(struct sdshdr5);
         case SDS_TYPE_8:    // 长度大于等于2^5小于2^8
@@ -121,17 +121,17 @@ sds sdsnewlen(const void *init, size_t initlen) {   //　创建一个SDS　字�
         memset(sh, 0, hdrlen+initlen+1);    // 初始化为'\0'
     if (sh == NULL) return NULL;    // 内存分配失败
     s = (char*)sh+hdrlen;
-    fp = ((unsigned char*)s)-1; // fp 指向 sds 的 flag 首地址, 标志字符串类型
+    fp = ((unsigned char*)s)-1; // fp 指向 sds 的 flags, 标志字符串类型
     switch(type) {
         case SDS_TYPE_5: {
-            *fp = type | (initlen << SDS_TYPE_BITS);
+            *fp = type | (initlen << SDS_TYPE_BITS);    // 记录字符串长度(高5位)和类型信息(低3位)
             break;
         }
         case SDS_TYPE_8: {
-            SDS_HDR_VAR(8,s);
-            sh->len = initlen;
-            sh->alloc = initlen;
-            *fp = type;
+            SDS_HDR_VAR(8,s);   // 将指针 sh 指向结构体首地址
+            sh->len = initlen;  // 设置字符串长度
+            sh->alloc = initlen;    // 记录为字符串分配的大小
+            *fp = type; // 设置字符串类型
             break;
         }
         case SDS_TYPE_16: {
@@ -157,32 +157,46 @@ sds sdsnewlen(const void *init, size_t initlen) {   //　创建一个SDS　字�
         }
     }
     if (initlen && init)
-        memcpy(s, init, initlen);
-    s[initlen] = '\0';
+        memcpy(s, init, initlen);   // 初始化字符串
+    s[initlen] = '\0';  // 以 '\0' 作为结束符
     return s;
 }
 
 /* Create an empty (zero length) sds string. Even in this case the string
  * always has an implicit null term. */
+/**
+ * 创建一个空(长度为0)的 sds 字符串，
+ * 即使在中情况下，字符串总是有一个隐式的 null 结束标志
+ **/
 sds sdsempty(void) {
-    return sdsnewlen("",0);
+    return sdsnewlen("",0); // 占一个字节空间大小，存储一个 '\0'
 }
 
 /* Create a new sds string starting from a null terminated C string. */
+/**
+ * 创建一个新的 sds 字符串，这个字符串的初始值是以 null 结束的 C 风格字符串
+ * (将 C 风格字符串转换为 sds 类型的字符串)
+ **/
 sds sdsnew(const char *init) {
-    size_t initlen = (init == NULL) ? 0 : strlen(init);
-    return sdsnewlen(init, initlen);
+    size_t initlen = (init == NULL) ? 0 : strlen(init); // 获取 C 风格字符串的长度
+    return sdsnewlen(init, initlen);    // 创建新的字符串，并将值设为为 init 指向的字符串
 }
 
 /* Duplicate an sds string. */
+/**
+ * 复制一个 sds 类型的字符串
+ **/
 sds sdsdup(const sds s) {
-    return sdsnewlen(s, sdslen(s));
+    return sdsnewlen(s, sdslen(s)); // s 指向字符串的首地址(不是 SDS 类型结构体的首地址)
 }
 
 /* Free an sds string. No operation is performed if 's' is NULL. */
+/**
+ * 释放一个 sds 类型字符串, 如果 s 为 NULL ，则没有任何操作
+ **/
 void sdsfree(sds s) {
     if (s == NULL) return;
-    s_free((char*)s-sdsHdrSize(s[-1]));
+    s_free((char*)s-sdsHdrSize(s[-1])); // 释放整个结构体的内存空间，s-sdsHdrSize(s[-1])为结构体的首地址
 }
 
 /* Set the sds string length to the length as obtained with strlen(), so
@@ -199,18 +213,38 @@ void sdsfree(sds s) {
  * The output will be "2", but if we comment out the call to sdsupdatelen()
  * the output will be "6" as the string was modified but the logical length
  * remains 6 bytes. */
-void sdsupdatelen(sds s) {
-    size_t reallen = strlen(s);
-    sdssetlen(s, reallen);
+/**
+ * 将 sds 类型的字符串长度设置为 strlen() 函数获得的长度
+ * 因此考虑到的字符串的内容是取决于第一个 null 结束字符
+ * 
+ * 当 sds 字符串被某种方式手动破坏的时候，这个函数是有用的
+ * 像下面这个例子:
+ * s = sdsnew("foobar");
+ * s[2] = '\0';
+ * sdsupdatelen(s);
+ * printf("%d\n", sdslen(s));
+ * 
+ * 输出将会是2，但是如果我们调用 sdssupdatelen() 函数，
+ * 输出将会是6， 当字符串被修改，这个逻辑长度仍然是6
+ **/
+void sdsupdatelen(sds s) {  // 更新字符串长度
+    size_t reallen = strlen(s); // 获取字符串长度
+    sdssetlen(s, reallen);  // 重新设置字符串长度
 }
 
 /* Modify an sds string in-place to make it empty (zero length).
  * However all the existing buffer is not discarded but set as free space
  * so that next append operations will not require allocations up to the
  * number of bytes previously available. */
+/**
+ * 修改一个 sds 字符串至空(长度为0)
+ * 然而所有自存在的空间并不会被销毁，但是会设置在可用空间里，
+ * 这样下次再有添加操作时，如果之前分配的字节数够用，
+ * 就不用再分配空间了
+ **/
 void sdsclear(sds s) {
-    sdssetlen(s, 0);
-    s[0] = '\0';
+    sdssetlen(s, 0);    // 设置字符串长度为0
+    s[0] = '\0';    // 只包含一个 '\0'
 }
 
 /* Enlarge the free space at the end of the sds string so that the caller
@@ -219,6 +253,9 @@ void sdsclear(sds s) {
  *
  * Note: this does not change the *length* of the sds string as returned
  * by sdslen(), but only the free buffer space we have. */
+/**
+ * 
+ **/
 sds sdsMakeRoomFor(sds s, size_t addlen) {
     void *sh, *newsh;
     size_t avail = sdsavail(s);

@@ -121,7 +121,7 @@ sds sdsnewlen(const void *init, size_t initlen) {   //　创建一个SDS　字�
         memset(sh, 0, hdrlen+initlen+1);    // 初始化为'\0'
     if (sh == NULL) return NULL;    // 内存分配失败
     s = (char*)sh+hdrlen;
-    fp = ((unsigned char*)s)-1; // fp 指向字符串的首地址
+    fp = ((unsigned char*)s)-1; // fp 指向 sds 的 flag 首地址, 标志字符串类型
     switch(type) {
         case SDS_TYPE_5: {
             *fp = type | (initlen << SDS_TYPE_BITS);

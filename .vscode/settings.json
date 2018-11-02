@@ -5,6 +5,9 @@
         "utility": "c",
         "functional": "c",
         "ratio": "c",
-        "type_traits": "c"
+        "type_traits": "c",
+        "config.h": "c",
+        "chrono": "c",
+        "tuple": "c"
     }
 }

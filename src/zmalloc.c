@@ -36,7 +36,14 @@
  * for instance to free results obtained by backtrace_symbols(). We need
  * to define this function before including zmalloc.h that may shadow the
  * free implementation if we use jemalloc or another non standard allocator. */
-void zlibc_free(void *ptr) {
+/**
+ * 这个函数给我们提供了使用原库中的 free() 函数，
+ * 这个函数是有用的，例如: 可以释放有 backtrace_symbols() 函数获得的结果
+ * 我们需要在包括 zmalloc.h 之前定义这个函数，
+ * 如果我们使用 jemalloc 或者 其他的非标准分配器
+ * zmalloc.h 可能会屏蔽 free 函数的实现
+ **/
+void zlibc_free(void *ptr) {    // 包含标准释放函数，在包括 zmalloc.h 之前定义
     free(ptr);
 }
 

@@ -203,14 +203,18 @@ static inline size_t sdsalloc(const sds s) {
     return 0;
 }
 
-static inline void sdssetalloc(sds s, size_t newlen) {
-    unsigned char flags = s[-1];
-    switch(flags&SDS_TYPE_MASK) {
-        case SDS_TYPE_5:
+static inline void sdssetalloc(sds s, size_t newlen) {  // 设置 sds 已分配内存大小
+    unsigned char flags = s[-1];    
+    switch(flags&SDS_TYPE_MASK) {   // 获取 sds 标志
+        case SDS_TYPE_5:    // 类型 5
             /* Nothing to do, this type has no total allocation info. */
+            /**
+             * 不做任何事情，因为类型5没有记录总分配大小信息
+             **/
             break;
+        // 其他类型，有 alloc 记录总分配的内存大小
         case SDS_TYPE_8:
-            SDS_HDR(8,s)->alloc = newlen;
+            SDS_HDR(8,s)->alloc = newlen;   // 更新分配内存大小
             break;
         case SDS_TYPE_16:
             SDS_HDR(16,s)->alloc = newlen;

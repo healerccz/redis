@@ -288,22 +288,26 @@ sds sdsMakeRoomFor(sds s, size_t addlen) {
 
     hdrlen = sdsHdrSize(type);  //　获取　sds 结构体长度
     if (oldtype==type) {    //　类型没有变化，
-        newsh = s_realloc(sh, hdrlen+newlen+1);
+        newsh = s_realloc(sh, hdrlen+newlen+1); // 更新内存大小， sds 头的内存可能没有改变
+                                                // (要看 sh 指向的已分配的内存后面没有没足够的空间)
         if (newsh == NULL) return NULL;
         s = (char*)newsh+hdrlen;
     } else {
         /* Since the header size changes, need to move the string forward,
          * and can't use realloc */
-        newsh = s_malloc(hdrlen+newlen+1);
-        if (newsh == NULL) return NULL;
-        memcpy((char*)newsh+hdrlen, s, len+1);
-        s_free(sh);
-        s = (char*)newsh+hdrlen;
-        s[-1] = type;
-        sdssetlen(s, len);
+        /**
+         * 因为头的大小变化，需要清楚之前的字符串，不能使用 remalloc() 函数
+         **/
+        newsh = s_malloc(hdrlen+newlen+1);  // 重新分配内存
+        if (newsh == NULL) return NULL; // 内存分配失败，返回 NULL 
+        memcpy((char*)newsh+hdrlen, s, len+1);  // 将旧字符串内容拷贝到新分配的内存中
+        s_free(sh); // 释放原有内存
+        s = (char*)newsh+hdrlen;    // s 指向 sds 中字符串的首地址
+        s[-1] = type;   // 设置 sds 类型
+        sdssetlen(s, len);  // 重新设置 sds 长度
     }
-    sdssetalloc(s, newlen);
-    return s;
+    sdssetalloc(s, newlen); // 重新设置 sds 已分配的内存长度
+    return s;   // 返回 sds 中字符串的首地址
 }
 
 /* Reallocate the sds string so that it has no free space at the end. The

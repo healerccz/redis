@@ -254,11 +254,12 @@ void sdsclear(sds s) {
  * Note: this does not change the *length* of the sds string as returned
  * by sdslen(), but only the free buffer space we have. */
 /**
- * 
+ * 在 sds 字符串后面扩大空闲空间，使调用者可以确保调用该函数之后能够在字符串后面
+ * 添加 addlen 长度的字符串，后面有一个空字节
  **/
 sds sdsMakeRoomFor(sds s, size_t addlen) {
     void *sh, *newsh;
-    size_t avail = sdsavail(s);
+    size_t avail = sdsavail(s); // 获取可用的空间大小
     size_t len, newlen;
     char type, oldtype = s[-1] & SDS_TYPE_MASK; // 旧字符串 flags 标志
     int hdrlen;
@@ -316,6 +317,10 @@ sds sdsMakeRoomFor(sds s, size_t addlen) {
  *
  * After the call, the passed sds string is no longer valid and all the
  * references must be substituted with the new pointer returned by the call. */
+/**
+ * 重新分配 sds 字符串的内存，使字符串后面没有空闲的空间，
+ * 
+ **/
 sds sdsRemoveFreeSpace(sds s) {
     void *sh, *newsh;
     char type, oldtype = s[-1] & SDS_TYPE_MASK;

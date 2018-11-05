@@ -8,6 +8,7 @@
         "type_traits": "c",
         "config.h": "c",
         "chrono": "c",
-        "tuple": "c"
+        "tuple": "c",
+        "future": "c"
     }
 }

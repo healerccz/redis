@@ -319,38 +319,49 @@ sds sdsMakeRoomFor(sds s, size_t addlen) {
  * references must be substituted with the new pointer returned by the call. */
 /**
  * 重新分配 sds 字符串的内存，使字符串后面没有空闲的空间，
+ * 原字符串不会被修改，但是下次在其后连接字符串时，需要重新分配内存
  * 
+ * 调用该函数之后，参数中传递过来的 sds 字符串不再可用，
+ * 所有的引用将会被该函数返回的新指针取代
  **/
-sds sdsRemoveFreeSpace(sds s) {
+sds sdsRemoveFreeSpace(sds s) { // 回收可用空间
     void *sh, *newsh;
-    char type, oldtype = s[-1] & SDS_TYPE_MASK;
-    int hdrlen, oldhdrlen = sdsHdrSize(oldtype);
-    size_t len = sdslen(s);
-    sh = (char*)s-oldhdrlen;
+    char type, oldtype = s[-1] & SDS_TYPE_MASK; // 获取旧字符串的类型
+    int hdrlen, oldhdrlen = sdsHdrSize(oldtype);    // 获取就字符串头的大小
+    size_t len = sdslen(s); // 获取字符串的长度
+    sh = (char*)s-oldhdrlen;    // 指向该字符串所在 sds 结构体的首地址
 
     /* Check what would be the minimum SDS header that is just good enough to
      * fit this string. */
-    type = sdsReqType(len);
-    hdrlen = sdsHdrSize(type);
+    /**
+     * 检查刚好能放下这个字符串的最小 sds 头的大小
+     **/
+    type = sdsReqType(len); // 根据字符串长度判断可以有的最小类型
+    hdrlen = sdsHdrSize(type);  // 根据最小类型判断在该类型下头的大小
 
     /* If the type is the same, or at least a large enough type is still
      * required, we just realloc(), letting the allocator to do the copy
      * only if really needed. Otherwise if the change is huge, we manually
      * reallocate the string to use the different header type. */
-    if (oldtype==type || type > SDS_TYPE_8) {
-        newsh = s_realloc(sh, oldhdrlen+len+1);
+    /**
+     * 如果类型与之前字符串类型是相同的，或者足够大的类型仍然是需要的，
+     * 我们只调用 realloc() 函数， 如果确实需要，让分配器做拷贝操作，
+     * 否则如果改变巨大，我们需要重新为字符串分配空间，这样可以使用不同的头类型
+     **/
+    if (oldtype==type || type > SDS_TYPE_8) {   // 类型相同或者足够大的类型仍需要
+        newsh = s_realloc(sh, oldhdrlen+len+1); //回收部分空间
+        if (newsh == NULL) return NULL; 
+        s = (char*)newsh+oldhdrlen; // 设置 s 值，指向真正的字符串首地址
+    } else {    // 更换头类型
+        newsh = s_malloc(hdrlen+len+1); // 重新分配空间 
         if (newsh == NULL) return NULL;
-        s = (char*)newsh+oldhdrlen;
-    } else {
-        newsh = s_malloc(hdrlen+len+1);
-        if (newsh == NULL) return NULL;
-        memcpy((char*)newsh+hdrlen, s, len+1);
-        s_free(sh);
+        memcpy((char*)newsh+hdrlen, s, len+1);  // 拷贝原字符串的值
+        s_free(sh); // 释放旧字符串的全部空间
         s = (char*)newsh+hdrlen;
-        s[-1] = type;
-        sdssetlen(s, len);
-    }
-    sdssetalloc(s, len);
+        s[-1] = type;   // 设置新字符串的类型(类型、 所分配的空间变了， 字符串本身的值没有改变)
+        sdssetlen(s, len);  // 设置字符串的长度
+    }   
+    sdssetalloc(s, len);    // 设置为字符串分配的空间大小
     return s;
 }
 

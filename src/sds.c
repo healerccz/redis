@@ -372,13 +372,25 @@ sds sdsRemoveFreeSpace(sds s) { // 回收可用空间
  * 3) The free buffer at the end if any.
  * 4) The implicit null term.
  */
+/**
+ * 返回一个特定 sds 字符串分配的总内存大小
+ * 包括:
+ * 1) 在指针前面 sds 头的大小
+ * 2) 字符串本身的大小
+ * 3) 如果有，还包括空闲空间的大小
+ * 4) null 结束符
+ **/
 size_t sdsAllocSize(sds s) {
-    size_t alloc = sdsalloc(s);
-    return sdsHdrSize(s[-1])+alloc+1;
+    size_t alloc = sdsalloc(s); // 获取字符串已分配的内存大小
+    return sdsHdrSize(s[-1])+alloc+1;   // 总大小
 }
 
 /* Return the pointer of the actual SDS allocation (normally SDS strings
  * are referenced by the start of the string buffer). */
+/**
+ * 返回指向 SDS 结构体首地址的指针
+ * (通常， SDS 字符串是字符数组首地址的引用)
+ **/
 void *sdsAllocPtr(sds s) {
     return (void*) (s-sdsHdrSize(s[-1]));
 }
@@ -406,22 +418,44 @@ void *sdsAllocPtr(sds s) {
  * ... check for nread <= 0 and handle it ...
  * sdsIncrLen(s, nread);
  */
+/**
+ * 根据 'incr' 在增加字符串的长度并且减少空闲空间的长度，
+ * 字符串新的结尾也设置了 null 结束符
+ * 
+ * 这个函数在用户调用 sdsMakeRoomFor() 函数在当前字符串后添加一些字符串，
+ * 需要重新设置新的长度时使用，它可以调整字符串的长度
+ * 
+ * 注意: incr 为负数也是被允许的，这样可以从右边去掉部分字符串
+ * 
+ * 用法示例:
+ * 使用 sdsIncrLen() 函数和 sdsMakeRoomFor() 函数可以解决下面的情况，
+ * 在 sds 字符串后面添加一段来自内核的数字节的字符串时不要中间的缓冲区即可完成 
+ * 
+ * oldlen = sdslen(s);  // s 的原长度
+ * s = sdsMakeRoomFor(s, BUFFER_SIZE);  // 为 s 增加 BUFFER_SIZE 长度
+ * nread = read(fd, s+oldlen, BUFFER_SIZE); // 将描述符 fd 中 BUFFER_SIZE 长度的字符串读至 s 的字符串后面
+ * ... check for nread <= 0 and handle it ...   // 检查读取是否读取成功， 若失败，则处理之
+ * sdsIncrLen(s, nread);    // 增加 sds 记录的长度
+ **/
 void sdsIncrLen(sds s, ssize_t incr) {
-    unsigned char flags = s[-1];
+    unsigned char flags = s[-1];    // 获取包含 sds 类型的标志
     size_t len;
-    switch(flags&SDS_TYPE_MASK) {
+    switch(flags&SDS_TYPE_MASK) {   // sds 类型
         case SDS_TYPE_5: {
-            unsigned char *fp = ((unsigned char*)s)-1;
-            unsigned char oldlen = SDS_TYPE_5_LEN(flags);
-            assert((incr > 0 && oldlen+incr < 32) || (incr < 0 && oldlen >= (unsigned int)(-incr)));
-            *fp = SDS_TYPE_5 | ((oldlen+incr) << SDS_TYPE_BITS);
-            len = oldlen+incr;
+            unsigned char *fp = ((unsigned char*)s)-1;  // 指向 sds 的 flags
+            unsigned char oldlen = SDS_TYPE_5_LEN(flags);   // 获取 sds 长度
+            // incr 为正数时要小于 32 (类型 5 最多长度为 32 )
+            // incr 为负数时要大于等于现有字符串的长度 
+            assert((incr > 0 && oldlen+incr < 32) || (incr < 0 && oldlen >= (unsigned int)(-incr)));  
+            *fp = SDS_TYPE_5 | ((oldlen+incr) << SDS_TYPE_BITS);    // 改变 sds 中的 flags
+            len = oldlen+incr;  // 更改 sds 中记录的长度
             break;
         }
         case SDS_TYPE_8: {
-            SDS_HDR_VAR(8,s);
+            SDS_HDR_VAR(8,s);   // 获取 sds 的首地址指针
+            // incr 为正时小于等于剩余空间大小，为负时，大于已有字符串的长度
             assert((incr >= 0 && sh->alloc-sh->len >= incr) || (incr < 0 && sh->len >= (unsigned int)(-incr)));
-            len = (sh->len += incr);
+            len = (sh->len += incr);    // 更改 sds 中记录的长度
             break;
         }
         case SDS_TYPE_16: {
@@ -442,9 +476,9 @@ void sdsIncrLen(sds s, ssize_t incr) {
             len = (sh->len += incr);
             break;
         }
-        default: len = 0; /* Just to avoid compilation warnings. */
+        default: len = 0; /* Just to avoid compilation warnings. */ //仅仅是为了避免编译时的警告
     }
-    s[len] = '\0';
+    s[len] = '\0';  // null 结束标志
 }
 
 /* Grow the sds to have the specified length. Bytes that were not part of
@@ -452,16 +486,23 @@ void sdsIncrLen(sds s, ssize_t incr) {
  *
  * if the specified length is smaller than the current length, no operation
  * is performed. */
+/**
+ * 增加 sds 字符串至特定的长度，
+ * 新增的空间将被初始化为0
+ * 
+ * 如果特定的长度小于当前的长度，不做任何操作
+ **/
 sds sdsgrowzero(sds s, size_t len) {
-    size_t curlen = sdslen(s);
+    size_t curlen = sdslen(s);  // 获取当前字符串的长度
 
-    if (len <= curlen) return s;
-    s = sdsMakeRoomFor(s,len-curlen);
+    if (len <= curlen) return s;    // 目标长度小于当前长度，不做操作
+    s = sdsMakeRoomFor(s,len-curlen);   // 分配当前长度与目标长度的长度差个字节
     if (s == NULL) return NULL;
 
     /* Make sure added region doesn't contain garbage */
+    // 确保添加的区域没有垃圾值
     memset(s+curlen,0,(len-curlen+1)); /* also set trailing \0 byte */
-    sdssetlen(s, len);
+    sdssetlen(s, len);  // 重新设置 sds 中记录的长度
     return s;
 }
 

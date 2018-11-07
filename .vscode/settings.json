@@ -9,6 +9,11 @@
         "config.h": "c",
         "chrono": "c",
         "tuple": "c",
-        "future": "c"
+        "future": "c",
+        "cstdio": "c",
+        "sstream": "c",
+        "cstring": "c",
+        "unordered_map": "c",
+        "vector": "c"
     }
 }

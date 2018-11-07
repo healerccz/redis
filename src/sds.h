@@ -160,13 +160,13 @@ static inline void sdssetlen(sds s, size_t newlen) {    // 设置字符串长度
     }
 }
 
-static inline void sdsinclen(sds s, size_t inc) {
+static inline void sdsinclen(sds s, size_t inc) {   // 增加 sds 中记录字符串长度的值
     unsigned char flags = s[-1];
     switch(flags&SDS_TYPE_MASK) {
         case SDS_TYPE_5:
             {
                 unsigned char *fp = ((unsigned char*)s)-1;
-                unsigned char newlen = SDS_TYPE_5_LEN(flags)+inc;
+                unsigned char newlen = SDS_TYPE_5_LEN(flags)+inc;   // 增加长度
                 *fp = SDS_TYPE_5 | (newlen << SDS_TYPE_BITS);
             }
             break;
